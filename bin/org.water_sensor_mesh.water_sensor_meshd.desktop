@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Water_Sensor_Mesh
+Comment=Water_Sensor_Mesh App
+Exec=water_sensor_meshd
+Icon=org.water_sensor_mesh.water_sensor_meshd
+Terminal=true
+Type=Application
+Categories=Network;Chat;HamRadio;

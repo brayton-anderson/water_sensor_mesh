@@ -1,0 +1,6 @@
+[submodule "protobufs"]
+	path = protobufs
+	url = https://github.com/water_sensor_mesh/protobufs.git
+[submodule "meshtestic"]
+	path = meshtestic
+	url = https://github.com/water_sensor_mesh/meshTestic

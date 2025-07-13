@@ -1,0 +1,278 @@
+#include "configuration.h"
+#if !WATER_SENSOR_MESH_EXCLUDE_INPUTBROKER
+#include "buzz/BuzzerFeedbackThread.h"
+#include "input/ExpressLRSFiveWay.h"
+#include "input/InputBroker.h"
+#include "input/RotaryEncoderInterruptImpl1.h"
+#include "input/SerialKeyboardImpl.h"
+#include "input/TrackballInterruptImpl1.h"
+#include "input/UpDownInterruptImpl1.h"
+#include "modules/SystemCommandsModule.h"
+#if !WATER_SENSOR_MESH_EXCLUDE_I2C
+#include "input/cardKbI2cImpl.h"
+#endif
+#include "input/kbMatrixImpl.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_PKI
+#include "KeyVerificationModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_ADMIN
+#include "modules/AdminModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_ATAK
+#include "modules/AtakPluginModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_CANNEDMESSAGES
+#include "modules/CannedMessageModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_DETECTIONSENSOR
+#include "modules/DetectionSensorModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_NEIGHBORINFO
+#include "modules/NeighborInfoModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_NODEINFO
+#include "modules/NodeInfoModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_GPS
+#include "modules/PositionModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_REMOTEHARDWARE
+#include "modules/RemoteHardwareModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_POWERSTRESS
+#include "modules/PowerStressModule.h"
+#endif
+#include "modules/RoutingModule.h"
+#include "modules/TextMessageModule.h"
+#if !WATER_SENSOR_MESH_EXCLUDE_TRACEROUTE
+#include "modules/TraceRouteModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_WAYPOINT
+#include "modules/WaypointModule.h"
+#endif
+#if ARCH_PORTDUINO
+#include "input/LinuxInputImpl.h"
+#include "modules/Telemetry/HostMetrics.h"
+#if !WATER_SENSOR_MESH_EXCLUDE_STOREFORWARD
+#include "modules/StoreForwardModule.h"
+#endif
+#endif
+#if HAS_TELEMETRY
+#include "modules/Telemetry/DeviceTelemetry.h"
+#endif
+#if HAS_SENSOR && !WATER_SENSOR_MESH_EXCLUDE_ENVIRONMENTAL_SENSOR
+#include "main.h"
+#include "modules/Telemetry/AirQualityTelemetry.h"
+#include "modules/Telemetry/EnvironmentTelemetry.h"
+#include "modules/Telemetry/HealthTelemetry.h"
+#include "modules/Telemetry/Sensor/TelemetrySensor.h"
+#endif
+#if HAS_TELEMETRY && !WATER_SENSOR_MESH_EXCLUDE_POWER_TELEMETRY
+#include "modules/Telemetry/PowerTelemetry.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_GENERIC_THREAD_MODULE
+#include "modules/GenericThreadModule.h"
+#endif
+
+#ifdef ARCH_ESP32
+#if defined(USE_SX1280) && !WATER_SENSOR_MESH_EXCLUDE_AUDIO
+#include "modules/esp32/AudioModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_PAXCOUNTER
+#include "modules/esp32/PaxcounterModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_STOREFORWARD
+#include "modules/StoreForwardModule.h"
+#endif
+#endif
+#if defined(ARCH_ESP32) || defined(ARCH_NRF52) || defined(ARCH_RP2040) || defined(ARCH_PORTDUINO)
+#if !WATER_SENSOR_MESH_EXCLUDE_EXTERNALNOTIFICATION
+#include "modules/ExternalNotificationModule.h"
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_RANGETEST && !WATER_SENSOR_MESH_EXCLUDE_GPS
+#include "modules/RangeTestModule.h"
+#endif
+#if !defined(CONFIG_IDF_TARGET_ESP32S2) && !WATER_SENSOR_MESH_EXCLUDE_SERIAL
+#include "modules/SerialModule.h"
+#endif
+#endif
+
+#if !WATER_SENSOR_MESH_EXCLUDE_DROPZONE
+#include "modules/DropzoneModule.h"
+#endif
+
+/**
+ * Create module instances here.  If you are adding a new module, you must 'new' it here (or somewhere else)
+ */
+void setupModules()
+{
+    if (config.device.role != water_sensor_mesh_Config_DeviceConfig_Role_REPEATER) {
+#if (HAS_BUTTON || ARCH_PORTDUINO) && !WATER_SENSOR_MESH_EXCLUDE_INPUTBROKER
+        if (config.display.displaymode != water_sensor_mesh_Config_DisplayConfig_DisplayMode_COLOR) {
+            inputBroker = new InputBroker();
+            systemCommandsModule = new SystemCommandsModule();
+            buzzerFeedbackThread = new BuzzerFeedbackThread();
+        }
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_ADMIN
+        adminModule = new AdminModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_NODEINFO
+        nodeInfoModule = new NodeInfoModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_GPS
+        positionModule = new PositionModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_WAYPOINT
+        waypointModule = new WaypointModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_TEXTMESSAGE
+        textMessageModule = new TextMessageModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_TRACEROUTE
+        traceRouteModule = new TraceRouteModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_NEIGHBORINFO
+        neighborInfoModule = new NeighborInfoModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_DETECTIONSENSOR
+        detectionSensorModule = new DetectionSensorModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_ATAK
+        atakPluginModule = new AtakPluginModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_PKI
+        keyVerificationModule = new KeyVerificationModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_DROPZONE
+        dropzoneModule = new DropzoneModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_GENERIC_THREAD_MODULE
+        new GenericThreadModule();
+#endif
+        // Note: if the rest of water_sensor_mesh doesn't need to explicitly use your module, you do not need to assign the instance
+        // to a global variable.
+
+#if !WATER_SENSOR_MESH_EXCLUDE_REMOTEHARDWARE
+        new RemoteHardwareModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_POWERSTRESS
+        new PowerStressModule();
+#endif
+        // Example: Put your module here
+        // new ReplyModule();
+#if (HAS_BUTTON || ARCH_PORTDUINO) && !WATER_SENSOR_MESH_EXCLUDE_INPUTBROKER
+
+        if (config.display.displaymode != water_sensor_mesh_Config_DisplayConfig_DisplayMode_COLOR) {
+            rotaryEncoderInterruptImpl1 = new RotaryEncoderInterruptImpl1();
+            if (!rotaryEncoderInterruptImpl1->init()) {
+                delete rotaryEncoderInterruptImpl1;
+                rotaryEncoderInterruptImpl1 = nullptr;
+            }
+            upDownInterruptImpl1 = new UpDownInterruptImpl1();
+            if (!upDownInterruptImpl1->init()) {
+                delete upDownInterruptImpl1;
+                upDownInterruptImpl1 = nullptr;
+            }
+            cardKbI2cImpl = new CardKbI2cImpl();
+            cardKbI2cImpl->init();
+#ifdef INPUTBROKER_MATRIX_TYPE
+            kbMatrixImpl = new KbMatrixImpl();
+            kbMatrixImpl->init();
+#endif // INPUTBROKER_MATRIX_TYPE
+#ifdef INPUTBROKER_SERIAL_TYPE
+            aSerialKeyboardImpl = new SerialKeyboardImpl();
+            aSerialKeyboardImpl->init();
+#endif // INPUTBROKER_MATRIX_TYPE
+        }
+#endif // HAS_BUTTON
+#if ARCH_PORTDUINO
+        if (config.display.displaymode != water_sensor_mesh_Config_DisplayConfig_DisplayMode_COLOR) {
+            aLinuxInputImpl = new LinuxInputImpl();
+            aLinuxInputImpl->init();
+        }
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_INPUTBROKER
+        if (config.display.displaymode != water_sensor_mesh_Config_DisplayConfig_DisplayMode_COLOR) {
+            trackballInterruptImpl1 = new TrackballInterruptImpl1();
+            trackballInterruptImpl1->init(TB_DOWN, TB_UP, TB_LEFT, TB_RIGHT, TB_PRESS);
+        }
+#endif
+#ifdef INPUTBROKER_EXPRESSLRSFIVEWAY_TYPE
+        expressLRSFiveWayInput = new ExpressLRSFiveWay();
+#endif
+#if HAS_SCREEN && !WATER_SENSOR_MESH_EXCLUDE_CANNEDMESSAGES
+        if (config.display.displaymode != water_sensor_mesh_Config_DisplayConfig_DisplayMode_COLOR) {
+            cannedMessageModule = new CannedMessageModule();
+        }
+#endif
+#if ARCH_PORTDUINO
+        new HostMetricsModule();
+#endif
+#if HAS_TELEMETRY
+        new DeviceTelemetryModule();
+#endif
+// TODO: How to improve this?
+#if HAS_SENSOR && !WATER_SENSOR_MESH_EXCLUDE_ENVIRONMENTAL_SENSOR
+        new EnvironmentTelemetryModule();
+#if __has_include("Adafruit_PM25AQI.h")
+        if (nodeTelemetrySensorsMap[water_sensor_mesh_TelemetrySensorType_PMSA003I].first > 0) {
+            new AirQualityTelemetryModule();
+        }
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_HEALTH_TELEMETRY
+        if (nodeTelemetrySensorsMap[water_sensor_mesh_TelemetrySensorType_MAX30102].first > 0 ||
+            nodeTelemetrySensorsMap[water_sensor_mesh_TelemetrySensorType_MLX90614].first > 0) {
+            new HealthTelemetryModule();
+        }
+#endif
+#endif
+#if HAS_TELEMETRY && !WATER_SENSOR_MESH_EXCLUDE_POWER_TELEMETRY && !WATER_SENSOR_MESH_EXCLUDE_ENVIRONMENTAL_SENSOR
+        new PowerTelemetryModule();
+#endif
+#if (defined(ARCH_ESP32) || defined(ARCH_NRF52) || defined(ARCH_RP2040)) && !defined(CONFIG_IDF_TARGET_ESP32S2) &&               \
+    !defined(CONFIG_IDF_TARGET_ESP32C3)
+#if !WATER_SENSOR_MESH_EXCLUDE_SERIAL
+        if (config.display.displaymode != water_sensor_mesh_Config_DisplayConfig_DisplayMode_COLOR) {
+            new SerialModule();
+        }
+#endif
+#endif
+#ifdef ARCH_ESP32
+        // Only run on an esp32 based device.
+#if defined(USE_SX1280) && !WATER_SENSOR_MESH_EXCLUDE_AUDIO
+        audioModule = new AudioModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_PAXCOUNTER
+        paxcounterModule = new PaxcounterModule();
+#endif
+#endif
+#if defined(ARCH_ESP32) || defined(ARCH_PORTDUINO)
+#if !WATER_SENSOR_MESH_EXCLUDE_STOREFORWARD
+        storeForwardModule = new StoreForwardModule();
+#endif
+#endif
+#if defined(ARCH_ESP32) || defined(ARCH_NRF52) || defined(ARCH_RP2040) || defined(ARCH_PORTDUINO)
+#if !WATER_SENSOR_MESH_EXCLUDE_EXTERNALNOTIFICATION
+        externalNotificationModule = new ExternalNotificationModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_RANGETEST && !WATER_SENSOR_MESH_EXCLUDE_GPS
+        new RangeTestModule();
+#endif
+#endif
+    } else {
+#if !WATER_SENSOR_MESH_EXCLUDE_ADMIN
+        adminModule = new AdminModule();
+#endif
+#if HAS_TELEMETRY
+        new DeviceTelemetryModule();
+#endif
+#if !WATER_SENSOR_MESH_EXCLUDE_TRACEROUTE
+        traceRouteModule = new TraceRouteModule();
+#endif
+    }
+    // NOTE! This module must be added LAST because it likes to check for replies from other modules and avoid sending extra
+    // acks
+    routingModule = new RoutingModule();
+}

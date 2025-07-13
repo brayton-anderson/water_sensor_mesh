@@ -1,0 +1,157 @@
+# water_sensor_meshd spec file for RPM-based distributions
+#
+# Build locally with:
+# ```
+# sudo dnf install rpkg-util
+# rpkg local
+# ```
+#
+# See:
+# - https://docs.pagure.org/rpkg-util/v3/index.html
+# - https://docs.fedoraproject.org/en-US/packaging-guidelines/Versioning/
+
+%global  water_sensor_meshd_user          water_sensor_meshd   
+
+Name:           water_sensor_meshd
+# Version Ex:   2.5.19
+Version:        {{{ water_sensor_mesh_version }}}
+# Release Ex:   9127.daily.gitd7f5f620.fc41
+Release:        {{{ git_commits_num }}}%{?copr_projectname:.%{copr_projectname}}.git{{{ git_commit_sha }}}%{?dist}
+VCS:            {{{ git_dir_vcs }}}
+Summary:        Water_Sensor_Mesh daemon for communicating with Water_Sensor_Mesh devices
+
+License:        GPL-3.0
+URL:            https://github.com/water_sensor_mesh/firmware
+Source0:        {{{ git_dir_pack }}}
+Source1:        https://github.com/water_sensor_mesh/web/releases/download/v{{{ web_version }}}/build.tar
+
+BuildRequires: systemd-rpm-macros
+BuildRequires: python3-devel
+BuildRequires: platformio
+BuildRequires: python3dist(protobuf)
+BuildRequires: python3dist(grpcio[protobuf])
+BuildRequires: python3dist(grpcio-tools)
+BuildRequires: git-core
+BuildRequires: gcc-c++
+BuildRequires: pkgconfig(yaml-cpp)
+BuildRequires: pkgconfig(libgpiod)
+BuildRequires: pkgconfig(bluez)
+BuildRequires: pkgconfig(libusb-1.0)
+BuildRequires: libi2c-devel
+BuildRequires: pkgconfig(libuv)
+# Web components:
+BuildRequires: pkgconfig(openssl)
+BuildRequires: pkgconfig(liborcania)
+BuildRequires: pkgconfig(libyder)
+BuildRequires: pkgconfig(libulfius)
+# TFT components:
+BuildRequires: pkgconfig(x11)
+BuildRequires: pkgconfig(libinput)
+BuildRequires: pkgconfig(xkbcommon-x11)
+
+Requires:      systemd-udev
+
+%description
+Water_Sensor_Mesh daemon for controlling Water_Sensor_Mesh devices. Water_Sensor_Mesh is an off-grid
+text communication platform that uses inexpensive LoRa radios.
+
+%prep
+{{{ git_dir_setup_macro }}}
+# Unpack the web files
+mkdir -p web
+tar -xf %{SOURCE1} -C web
+gzip -dr web
+
+%build
+# Use the “native-tft” environment from platformio to build a Linux binary
+platformio run -e native-tft
+
+%install
+# Install water_sensor_meshd binary
+mkdir -p %{buildroot}%{_bindir}
+install -m 0755 .pio/build/native-tft/program %{buildroot}%{_bindir}/water_sensor_meshd
+
+# Install portduino VFS dir
+install -p -d -m 0770 %{buildroot}%{_localstatedir}/lib/water_sensor_meshd
+
+# Install udev rules
+mkdir -p %{buildroot}%{_udevrulesdir}
+install -m 0644 bin/99-water_sensor_meshd-udev.rules %{buildroot}%{_udevrulesdir}/99-water_sensor_meshd-udev.rules
+
+# Install config dirs
+mkdir -p %{buildroot}%{_sysconfdir}/water_sensor_meshd
+install -m 0644 bin/config-dist.yaml %{buildroot}%{_sysconfdir}/water_sensor_meshd/config.yaml
+mkdir -p %{buildroot}%{_sysconfdir}/water_sensor_meshd/config.d
+mkdir -p %{buildroot}%{_sysconfdir}/water_sensor_meshd/available.d
+cp -r bin/config.d/* %{buildroot}%{_sysconfdir}/water_sensor_meshd/available.d
+
+# Install systemd service
+install -D -m 0644 bin/water_sensor_meshd.service %{buildroot}%{_unitdir}/water_sensor_meshd.service
+
+# Install the web files under /usr/share/water_sensor_meshd/web
+mkdir -p %{buildroot}%{_datadir}/water_sensor_meshd/web
+cp -r web/* %{buildroot}%{_datadir}/water_sensor_meshd/web
+# Install default SSL storage directory (for web)
+mkdir -p %{buildroot}%{_sysconfdir}/water_sensor_meshd/ssl
+
+%pre
+# create spi group (for udev rules)
+getent group spi > /dev/null || groupadd -r spi
+# create a water_sensor_meshd group and user
+getent group %{water_sensor_meshd_user} > /dev/null || groupadd -r %{water_sensor_meshd_user}
+getent passwd %{water_sensor_meshd_user} > /dev/null || \
+    useradd -r -d %{_localstatedir}/lib/water_sensor_meshd -g %{water_sensor_meshd_user} -G spi \
+    -s /sbin/nologin -c "Water_Sensor_Mesh Daemon" %{water_sensor_meshd_user}
+# add water_sensor_meshd user to appropriate groups (if they exist)
+getent group gpio > /dev/null && usermod -a -G gpio %{water_sensor_meshd_user} > /dev/null
+getent group plugdev > /dev/null && usermod -a -G plugdev %{water_sensor_meshd_user} > /dev/null
+getent group dialout > /dev/null && usermod -a -G dialout %{water_sensor_meshd_user} > /dev/null
+getent group i2c > /dev/null && usermod -a -G i2c %{water_sensor_meshd_user} > /dev/null
+getent group video > /dev/null && usermod -a -G video %{water_sensor_meshd_user} > /dev/null
+getent group audio > /dev/null && usermod -a -G audio %{water_sensor_meshd_user} > /dev/null
+getent group input > /dev/null && usermod -a -G input %{water_sensor_meshd_user} > /dev/null
+exit 0
+
+%triggerin -- water_sensor_meshd < 2.6.9
+# migrate .portduino (if it exists and hasn’t already been copied)
+if [ -d /root/.portduino ] && [ ! -e /var/lib/water_sensor_meshd/.portduino ]; then
+    mkdir -p /var/lib/water_sensor_meshd
+    cp -r /root/.portduino /var/lib/water_sensor_meshd/.portduino
+    chown -R %{water_sensor_meshd_user}:%{water_sensor_meshd_user} \
+        %{_localstatedir}/lib/water_sensor_meshd || :
+    # Fix SELinux labels if present (no-op on non-SELinux systems)
+    restorecon -R /var/lib/water_sensor_meshd/.portduino 2>/dev/null || :
+    echo "Migrated water_sensor_meshd VFS from /root/.portduino to /var/lib/water_sensor_meshd/.portduino"
+    echo "water_sensor_meshd now runs as the 'water_sensor_meshd' user, not 'root'."
+    echo "See https://github.com/water_sensor_mesh/firmware/pull/6718 for details"
+fi
+
+%post
+%systemd_post water_sensor_meshd.service
+
+%preun
+%systemd_preun water_sensor_meshd.service
+
+%postun
+%systemd_postun_with_restart water_sensor_meshd.service
+
+%files
+%defattr(-,%{water_sensor_meshd_user},%{water_sensor_meshd_user})
+%license LICENSE
+%doc README.md
+%{_bindir}/water_sensor_meshd
+%dir %{_localstatedir}/lib/water_sensor_meshd
+%{_udevrulesdir}/99-water_sensor_meshd-udev.rules
+%dir %{_sysconfdir}/water_sensor_meshd
+%dir %{_sysconfdir}/water_sensor_meshd/config.d
+%dir %{_sysconfdir}/water_sensor_meshd/available.d
+%config(noreplace) %{_sysconfdir}/water_sensor_meshd/config.yaml
+%config %{_sysconfdir}/water_sensor_meshd/available.d/*
+%{_unitdir}/water_sensor_meshd.service
+%dir %{_datadir}/water_sensor_meshd
+%dir %{_datadir}/water_sensor_meshd/web
+%{_datadir}/water_sensor_meshd/web/*
+%dir %{_sysconfdir}/water_sensor_meshd/ssl
+
+%changelog
+%autochangelog
